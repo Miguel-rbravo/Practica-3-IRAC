@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Practica 3</title>
+  <script src="https://reference.dashif.org/dash.js/latest/dist/dash.all.debug.js"> </script>
+  <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+</head>
+
+<body>
+  <div class="code">
+    <video class="dashjs-player" autoplay controls preload="auto" muted>
+    </video>
+  </div>
+  <div class="code">
+    <p>Video Bitrate: <span id="bitrate"></span> kbps</p>
+    <p>Video Buffer: <span id="buffer"></span> seconds</p>
+    <p>Video Representation: <span id="representation"></span></p>
+  </div>
+
+  <script>
+
+  document.addEventListener("DOMContentLoaded", function () {
+    init();
+
+  });
+  function init(){
+    var video,
+    player,
+    mpd_url = "./output/stream.mpd";
+    video = document.querySelector("video");
+    player = dashjs.MediaPlayer().create();
+    player.initialize(video, mpd_url, true);
+    player.on(dashjs.MediaPlayer.events["PLAYBACK_ENDED"], function() {
+      clearInterval(eventPoller);
+
+    });
+    var eventPoller = setInterval(function() {
+      var streamInfo = player.getActiveStream().getStreamInfo();
+      var dashMetrics = player.getDashMetrics();
+      var dashAdapter = player.getDashAdapter();
+      if (dashMetrics && streamInfo) {
+        const periodIdx = streamInfo.index;
+        var repSwitch = dashMetrics.getCurrentRepresentationSwitch('video', true);
+        var bufferLevel = dashMetrics.getCurrentBufferLevel('video', true);
+        window.buffer=bufferLevel;
+
+        var bitrate = repSwitch ? Math.round(dashAdapter.
+          getBandwidthForRepresentation(repSwitch.to,
+            periodIdx) / 1000) : NaN;
+            window.bitrateLevel=bitrate;
+            document.getElementById('buffer').innerText = bufferLevel + " secs";
+            document.getElementById('bitrate').innerText = bitrate + " Kbps";
+            document.getElementById('representation').innerText = repSwitch.to;
+
+
+
+
+
+
+
+
+          }
+
+
+          return bufferLevel;
+        }, 500);
+
+
+
+
+      }
+      window.onload = function () {
+        var rps=[];
+        var dps = []; // dataPoints
+        var chart = new CanvasJS.Chart("chartContainer", {
+          title :{
+            text: "Visualización avanzada de métricas"
+          },
+          axisY: {
+            title: "Nivel de Buffer (s)",
+            titleFontColor: "#4F81BC",
+            labelFontColor: "#4F81BC"
+          },
+          axisY2: {
+            title: "Bitrate (Kbps)",
+            titleFontColor: "#C0504E",
+            labelFontColor: "#C0504E"
+          },
+          data: [{
+            type: "line",
+            dataPoints: dps,
+            name: "Buffer",
+            showInLegend: true
+
+          },
+          {
+            type: "line",
+            dataPoints: rps,
+            showInLegend: true,
+            name: "Bitrate",
+            axisYType: "secondary"
+          }]
+        });
+
+        var xVal = 0;
+        var yVal = 100;
+        var yValrps=100;
+        var updateInterval = 500;
+        var dataLength = 10; // number of dataPoints visible at any point
+
+        var updateChart = function (count) {
+
+          count = count || 1;
+
+          for (var j = 0; j < count; j++) {
+            yVal = window.buffer
+            dps.push({
+              x: xVal,
+              y: yVal
+            });
+            xVal++;
+          }
+
+          for (var j = 0; j < count; j++) {
+            yValrps = window.bitrateLevel
+
+            rps.push({
+              x: xVal,
+              y: yValrps
+            });
+            xVal++;
+          }
+
+          if (dps.length > dataLength) {
+            dps.shift();
+          }
+          if (rps.length > dataLength) {
+            rps.shift();
+          }
+
+          chart.render();
+        };
+
+        updateChart(dataLength);
+        setInterval(function(){updateChart()}, updateInterval);
+
+      }
+
+      </script>
+      <div id="chartContainer" style="height: 300px; width: 100%;"></div>
+    </body>
+    </html>
